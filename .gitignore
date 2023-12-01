@@ -1,6 +1,7 @@
 # Binaries for programs and plugins
 main
 dflag
+examples/*_example
 *.exe
 *.exe~
 *.so

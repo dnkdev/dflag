@@ -1,19 +1,11 @@
-## `dflag` stands for "declarational flag"
 
-Library exploits V's language compile-time capabilities to simplify creation of CLI program. Gives the programmer the chance to write less code. Command-line interface could be described mostly in declarative style. Made for proof of concept and work at the first place, with hope that V works fine (but it is in v0.4 now in 2023).
-
-```
-v install https://github.com/dnkdev/dflag
-v run ~/.vmodules/dflag/examples/simple_example.v -b true -f 33.1 -n 11 -p "Hello World" -vd dummy.txt
-```
-
-```v
 module main
 
 import dflag
 
-// `compact_flags` allows to write multiple flags within one-dash(-): 
-// `.. -vds ..` which also is `.. -v -d -s ..`
+// `callback` - struct method to call it for processing
+// `compact_flags` - allows to write multiple flags within one-dash(-): 
+// 	`.. -vds ..` which also is `.. -v -d -s ..`
 @[callback: 'handler_func']
 @[compact_flags]
 struct DTest {
@@ -71,11 +63,3 @@ OPTIONS:
 	--float   -f	Show that this is the float
 	--dump	  -d	Dump the struct')
 }
-
-```
-
-TODO: tests
-
-TODO: accept `dflag.Type[[]string]` - same flag multiple times in command line
-
-TODO: accept structs to add a subcommands, like `cli doc -h` `cli run -h` ?
