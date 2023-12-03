@@ -7,7 +7,7 @@ pub type HandlerFn = fn ()
 pub struct Type[T] {
 pub mut:
 	// name string
-	// short string 
+	// short string
 	// flag bool
 	value T
 	usage string
@@ -24,17 +24,16 @@ mut:
 
 struct CliParams[T] {
 mut:
-	parent            &T
-	cli_name          string
-	handler           string
-	options           []CommandOption
-	extra_args        []string
-	is_compact_shorts bool
+	parent           &T
+	cli_name         string
+	handler          string
+	options          []CommandOption
+	extra_args       []string
+	is_compact_flags bool
 	// cmd_count         int
 	// exe_path          string
 }
 
-// @[manualfree]
 pub fn handle[T]() &T {
 	mut cli := CliParams[T]{
 		parent: &T{}
@@ -49,9 +48,6 @@ pub fn handle[T]() &T {
 	}
 	cli.call_handler()
 	res := cli.parent
-	// unsafe {
-	// 	cli.free()  // if it worked simple as that in V...
-	// }
 	return res
 }
 
@@ -74,7 +70,7 @@ fn (mut cli CliParams[T]) parse_args(args []string) ! {
 	mut os_args := args.clone()
 	os_args.delete(0) // delete the path
 
-	if cli.is_compact_shorts {
+	if cli.is_compact_flags {
 		for i in 0 .. os_args.len {
 			input_flag := os_args[i]
 			if !input_flag.starts_with('--') && input_flag.starts_with('-') && input_flag.len > 2 {
@@ -142,7 +138,7 @@ fn (mut cli CliParams[T]) parse_args(args []string) ! {
 						} $else $if field.typ is Type[u64] {
 							cli.parent.$(field.name).value = value.u64()
 							cli.parent.$(field.name).usage = option.usage
-						}$else $if field.typ is Type[u32] {
+						} $else $if field.typ is Type[u32] {
 							cli.parent.$(field.name).value = value.u32()
 							cli.parent.$(field.name).usage = option.usage
 						} $else $if field.typ is Type[f32] {
@@ -182,7 +178,7 @@ fn (mut cli CliParams[T]) parse_struct() {
 		} else if s_attr.name == 'callback' {
 			cli.handler = s_attr.arg
 		} else if s_attr.name == 'compact_flags' {
-			cli.is_compact_shorts = true
+			cli.is_compact_flags = true
 		}
 	}
 	$for field in T.fields {

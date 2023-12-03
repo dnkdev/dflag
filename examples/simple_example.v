@@ -4,17 +4,17 @@ module main
 import dflag
 
 // `callback` - struct method to call it for processing
-// `compact_flags` - allows to write multiple flags within one-dash(-): 
+// `compact_flags` - allows to write multiple flags within one-dash(-):
 // 	`.. -vds ..` which also is `.. -v -d -s ..`
 @[callback: 'handler_func']
 @[compact_flags]
 struct DTest {
 mut:
 	help        dflag.Type[bool]   @[flag; short: 'h']
-	print       dflag.Type[string] @[short: 'p'; usage:'`cli -p "Hello World"`']
+	print       dflag.Type[string] @[short: 'p'; usage: '`cli -p "Hello World"`']
 	number      dflag.Type[int]    @[short: 'n']
-	float		dflag.Type[f32]	   @[short: 'f']
-	boolean		dflag.Type[bool]   @[short: 'b']
+	float       dflag.Type[f32]    @[short: 'f']
+	boolean     dflag.Type[bool]   @[short: 'b']
 	verbose     dflag.Type[bool]   @[flag; short: 'v']
 	@dump       dflag.Type[bool]   @[flag; short: 'd']
 	files       []string           @[extra_args]
@@ -61,5 +61,6 @@ OPTIONS:
 	--verbose -v	Verbose output
 	--number  -n	Show that this is number indeed
 	--float   -f	Show that this is the float
+	--boolean -b 	Is it "true" or "false"
 	--dump	  -d	Dump the struct')
 }
