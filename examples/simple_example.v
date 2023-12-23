@@ -1,24 +1,23 @@
-
 module main
 
 import dflag
 
-// `callback` - struct method to call it for processing
+// `callback` - struct method to call it for processing the result
 // `compact_flags` - allows to write multiple flags within one-dash(-):
 // 	`.. -vds ..` which also is `.. -v -d -s ..`
 @[callback: 'handler_func']
 @[compact_flags]
 struct DTest {
 mut:
-	help        dflag.Type[bool]   @[flag; short: 'h']
-	print       dflag.Type[[]string] @[short: 'p'; usage: '`cli -p "Hello World"`']
-	number      dflag.Type[int]    @[short: 'n']
-	float       dflag.Type[f32]    @[short: 'f']
-	boolean     dflag.Type[bool]   @[short: 'b']
-	verbose     dflag.Type[bool]   @[flag; short: 'v']
-	@dump       dflag.Type[bool]   @[flag; short: 'd']
-	files       []string           @[extra_args]
-	empty       string             @[nocmd] // `nocmd` = just skipping in processing by `dflag` module (@[my_custom_attr;nocmd])
+	help        bool     @[flag; short: 'h']
+	print       []string @[short: 'p'] // array allows using flag multiple times
+	number      int      @[short: 'n']
+	float       f32      @[short: 'f']
+	boolean     bool     @[short: 'b']
+	verbose     bool     @[flag; short: 'v']
+	@dump       bool     @[flag; short: 'd']
+	files       []string @[extra_args]
+	empty       string   @[nocmd] // `nocmd` = skipping in processing by `dflag` module (@[my_custom_attr;nocmd])
 	empty_array []string // no attributes will skip processing also		
 }
 
@@ -27,25 +26,25 @@ fn main() {
 }
 
 fn (d &DTest) handler_func() {
-	if d == DTest{} || d.help.value {
+	if d == DTest{} || d.help {
 		print_help()
 		return
 	}
-	if d.@dump.value {
+	if d.@dump {
 		dump(d)
 	}
-	if d.verbose.value {
+	if d.verbose {
 		println('verbose flag detected!')
 	}
-	println('bool is ${d.boolean.value}')
+	println('bool is ${d.boolean}')
 
-	if d.number.value != 0 {
-		println('number is: `${d.number.value}` (${typeof(d.number.value).name})')
+	if d.number != 0 {
+		println('number is: `${d.number}` (${typeof(d.number).name})')
 	}
-	if d.float.value != 0.0 {
-		println('float is `${d.float.value}` (${typeof(d.float.value).name})')
+	if d.float != 0.0 {
+		println('float is `${d.float}` (${typeof(d.float).name})')
 	}
-	for print in d.print.value {
+	for print in d.print {
 		if print != '' {
 			println('text is: `${print}` (${typeof(print).name})')
 		}

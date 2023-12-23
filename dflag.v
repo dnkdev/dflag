@@ -2,36 +2,21 @@ module dflag
 
 import os
 
-pub type HandlerFn = fn ()
-
-pub struct Type[T] {
-pub mut:
-	// name string
-	// short string
-	// flag bool
-	value T
-	usage string
-}
-
 struct CommandOption {
 mut:
 	name  string
 	short string
-	usage string
 	value string
-	flag  bool // if true then there is no need for an value for this option, just flag
+	is_flag  bool // if true then there is no need for an value for this option, just flag
 }
 
 struct CliParams[T] {
 mut:
 	parent           &T
-	cli_name         string
 	handler          string
 	options          []CommandOption
 	extra_args       []string
 	is_compact_flags bool
-	// cmd_count         int
-	// exe_path          string
 }
 
 pub fn handle[T]() &T {
@@ -63,8 +48,6 @@ fn (mut cli CliParams[T]) call_handler() {
 
 @[direct_array_access]
 fn (mut cli CliParams[T]) parse_args(args []string) ! {
-	// cli.exe_path = os.args[0]
-	// cli.cmd_count = os.args.len - 1
 	mut is_arg_flag_value := false
 	mut os_args := args.clone()
 	os_args.delete(0) // delete the path
@@ -102,7 +85,7 @@ fn (mut cli CliParams[T]) parse_args(args []string) ! {
 			if flag_name == input_flag_name {
 				is_valid_flag = true
 				mut value := ''
-				if !option.flag {
+				if !option.is_flag {
 					if i + 1 >= os_args.len {
 						return error('option `${input_flag_delim}${flag_name}` requires a value')
 					}
@@ -118,39 +101,30 @@ fn (mut cli CliParams[T]) parse_args(args []string) ! {
 				option.value = value.str()
 				$for field in T.fields {
 					if field.name == option.name {
-						$if field.typ is Type[string] {
-							cli.parent.$(field.name).value = value.str()
-							cli.parent.$(field.name).usage = option.usage
-						} $else $if field.typ is Type[bool] {
+						$if field.typ is string {
+							cli.parent.$(field.name) = value.str()
+						} $else $if field.typ is bool {
 							if option.value == 'true' {
-								cli.parent.$(field.name).value = true
+								cli.parent.$(field.name) = true
 							} else {
-								cli.parent.$(field.name).value = false
+								cli.parent.$(field.name) = false
 							}
-							cli.parent.$(field.name).usage = option.usage
-						} $else $if field.typ is Type[int] {
-							cli.parent.$(field.name).value = value.int()
-							cli.parent.$(field.name).usage = option.usage
-						} $else $if field.typ is Type[[]string] {
-							cli.parent.$(field.name).value << value.str()
-							cli.parent.$(field.name).usage = option.usage
-						}$else $if field.typ is Type[i64] {
-							cli.parent.$(field.name).value = value.i64()
-							cli.parent.$(field.name).usage = option.usage
-						} $else $if field.typ is Type[u64] {
-							cli.parent.$(field.name).value = value.u64()
-							cli.parent.$(field.name).usage = option.usage
-						} $else $if field.typ is Type[u32] {
-							cli.parent.$(field.name).value = value.u32()
-							cli.parent.$(field.name).usage = option.usage
-						} $else $if field.typ is Type[f32] {
-							cli.parent.$(field.name).value = value.f32()
-							cli.parent.$(field.name).usage = option.usage
-						} $else $if field.typ is Type[f64] {
-							cli.parent.$(field.name).value = value.f64()
-							cli.parent.$(field.name).usage = option.usage
+						} $else $if field.typ is int {
+							cli.parent.$(field.name) = value.int()
+						} $else $if field.typ is []string {
+							cli.parent.$(field.name) << value.str()
+						} $else $if field.typ is i64 {
+							cli.parent.$(field.name) = value.i64()
+						} $else $if field.typ is u64 {
+							cli.parent.$(field.name) = value.u64()
+						} $else $if field.typ is u32 {
+							cli.parent.$(field.name) = value.u32()
+						} $else $if field.typ is f32 {
+							cli.parent.$(field.name) = value.f32()
+						} $else $if field.typ is f64 {
+							cli.parent.$(field.name) = value.f64()
 						} $else {
-							eprintln('error: `${field.name}` type is not acceptable. Use `@[nocmd]` to skip, or type of `dflag.Type[T]`')
+							eprintln('error: `${field.name}` type is not acceptable. Set `@[nocmd]` attribute to skip.')
 						}
 					}
 				}
@@ -160,6 +134,7 @@ fn (mut cli CliParams[T]) parse_args(args []string) ! {
 			return error('unknown input option: `${input_flag}`')
 		}
 	}
+	
 	cli.add_extra_arguments()
 }
 
@@ -175,9 +150,7 @@ fn (mut cli CliParams[T]) add_extra_arguments() {
 
 fn (mut cli CliParams[T]) parse_struct() {
 	$for s_attr in T.attributes {
-		if s_attr.name == 'cli_name' {
-			cli.cli_name = s_attr.arg
-		} else if s_attr.name == 'callback' {
+		if s_attr.name == 'callback' {
 			cli.handler = s_attr.arg
 		} else if s_attr.name == 'compact_flags' {
 			cli.is_compact_flags = true
@@ -200,14 +173,11 @@ fn (mut cli CliParams[T]) parse_struct() {
 					'short' {
 						option.short = attr[1].trim_indent()
 					}
-					'usage' {
-						option.usage = attr[1..].join(':').trim_indent()
-					}
 					'flag' {
-						$if field.typ !is bool && field.typ !is Type[bool] {
+						$if field.typ !is bool { 
 							panic('`flag` fields must be `bool` type [${T.name}.${field.name}]')
 						}
-						option.flag = true
+						option.is_flag = true
 					}
 					else {}
 				}
