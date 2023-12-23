@@ -11,7 +11,7 @@ import dflag
 struct DTest {
 mut:
 	help        dflag.Type[bool]   @[flag; short: 'h']
-	print       dflag.Type[string] @[short: 'p'; usage: '`cli -p "Hello World"`']
+	print       dflag.Type[[]string] @[short: 'p'; usage: '`cli -p "Hello World"`']
 	number      dflag.Type[int]    @[short: 'n']
 	float       dflag.Type[f32]    @[short: 'f']
 	boolean     dflag.Type[bool]   @[short: 'b']
@@ -45,8 +45,10 @@ fn (d &DTest) handler_func() {
 	if d.float.value != 0.0 {
 		println('float is `${d.float.value}` (${typeof(d.float.value).name})')
 	}
-	if d.print.value != '' {
-		println('text is: `${d.print.value}` (${typeof(d.print.value).name})')
+	for print in d.print.value {
+		if print != '' {
+			println('text is: `${print}` (${typeof(print).name})')
+		}
 	}
 	if d.files.len > 0 {
 		println('additional arguments: ${d.files}')

@@ -47,8 +47,7 @@ pub fn handle[T]() &T {
 		dump(cli)
 	}
 	cli.call_handler()
-	res := cli.parent
-	return res
+	return cli.parent
 }
 
 fn (mut cli CliParams[T]) call_handler() {
@@ -132,7 +131,10 @@ fn (mut cli CliParams[T]) parse_args(args []string) ! {
 						} $else $if field.typ is Type[int] {
 							cli.parent.$(field.name).value = value.int()
 							cli.parent.$(field.name).usage = option.usage
-						} $else $if field.typ is Type[i64] {
+						} $else $if field.typ is Type[[]string] {
+							cli.parent.$(field.name).value << value.str()
+							cli.parent.$(field.name).usage = option.usage
+						}$else $if field.typ is Type[i64] {
 							cli.parent.$(field.name).value = value.i64()
 							cli.parent.$(field.name).usage = option.usage
 						} $else $if field.typ is Type[u64] {

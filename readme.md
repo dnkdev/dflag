@@ -75,9 +75,10 @@ OPTIONS:
 }
 
 ```
+DONE: accept `dflag.Type[[]string]` - same flag multiple times in command line
+
+TODO: accept structs to add a subcommands, like `cli doc -h` `cli run -h` ?
 
 TODO: tests
 
-TODO: accept `dflag.Type[[]string]` - same flag multiple times in command line
-
-TODO: accept structs to add a subcommands, like `cli doc -h` `cli run -h` ?
+TODO: make use of 'usage' attribute on fields, or get rid of it?
