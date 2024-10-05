@@ -2,11 +2,22 @@
 
 Library exploits V's language compile-time capabilities to simplify creation of CLI program.
 
-```
-v install https://github.com/dnkdev/dflag
-v run ~/.vmodules/dflag/examples/simple_example.v -b true -f 33.1 -n 11 -p "Hello World" -vd dummy.txt
-```
+### Quick Start
 
+##### Install `dflag` module
+`
+v install https://github.com/dnkdev/dflag
+`
+##### Compile Example
+`
+v ~/.vmodules/dflag/examples/simple_example.v -o ./example
+`
+##### Run compiled binary
+`
+./example -b true -f 33.1 -n 11 -p "Hello World" -vd dummy.txt
+`
+
+#### Example Code
 ```v
 module main
 
@@ -17,16 +28,17 @@ import dflag
 // 	`.. -vds ..` which also is `.. -v -d -s ..`
 @[callback: 'handler_func']
 @[compact_flags]
+@[eq_sign_values]
 struct DTest {
 mut:
-	help        bool     @[flag; short: 'h']
-	print       []string @[short: 'p']
-	number      int      @[short: 'n']
+	help        bool     @[flag; short: 'h'] //
+	print       []string @[short: 'p'] // array allows using flag multiple times
+	number      int      @[short: 'n'] // not a flag, so requires a value 
 	float       f32      @[short: 'f']
 	boolean     bool     @[short: 'b']
 	verbose     bool     @[flag; short: 'v']
 	@dump       bool     @[flag; short: 'd']
-	files       []string @[extra_args]
+	files       []string @[extra_args] // `extra_args` collects all the rest arguments
 	empty       string   @[nocmd] // `nocmd` = skipping in processing by `dflag` module (@[my_custom_attr;nocmd])
 	empty_array []string // no attributes will skip processing also		
 }

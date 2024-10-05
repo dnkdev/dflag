@@ -4,19 +4,20 @@ import os
 
 struct CommandOption {
 mut:
-	name  string
-	short string
-	value string
-	is_flag  bool // if true then there is no need for an value for this option, just flag
+	name    string
+	short   string
+	value   string
+	is_flag bool // if true then there is no need for an value for this option, just flag
 }
 
 struct CliParams[T] {
 mut:
-	parent           &T
-	handler          string
-	options          []CommandOption
-	extra_args       []string
-	is_compact_flags bool
+	parent            &T
+	handler           string
+	options           []CommandOption
+	extra_args        []string
+	is_compact_flags  bool
+	is_eq_sign_values bool
 }
 
 pub fn handle[T]() &T {
@@ -77,7 +78,18 @@ fn (mut cli CliParams[T]) parse_args(args []string) ! {
 			is_arg_flag_value = false
 			continue
 		}
-		input_flag_name := input_flag.all_after(input_flag_delim)
+		mut input_flag_name := input_flag.all_after(input_flag_delim)
+		mut eq_sign_value := ''
+		if cli.is_eq_sign_values {
+			if input_flag_name.contains('=') {
+				eq_sign_value = input_flag_name.all_after('=')
+				input_flag_name = input_flag_name.all_before('=')
+				if eq_sign_value.len <= 0 {
+					return error('option `${input_flag_delim}${input_flag_name}` requires a value')
+				}
+	
+			}
+		}
 
 		mut is_valid_flag := false
 		for mut option in cli.options {
@@ -85,16 +97,22 @@ fn (mut cli CliParams[T]) parse_args(args []string) ! {
 			if flag_name == input_flag_name {
 				is_valid_flag = true
 				mut value := ''
-				if !option.is_flag {
-					if i + 1 >= os_args.len {
-						return error('option `${input_flag_delim}${flag_name}` requires a value')
+				if !option.is_flag{
+					if eq_sign_value != '' {
+						value = eq_sign_value
+					}	
+					else {
+
+						if i + 1 >= os_args.len {
+							return error('option `${input_flag_delim}${flag_name}` requires a value')
+						}
+						val := os_args[i + 1]
+						if val.starts_with('-') {
+							return error('wrong `${option.name}` option value `${input_flag_delim}${flag_name} ${val}`')
+						}
+						value = val
+						is_arg_flag_value = true
 					}
-					val := os_args[i + 1]
-					if val.starts_with('-') {
-						return error('wrong `${option.name}` option value `${input_flag_delim}${flag_name} ${val}`')
-					}
-					value = val
-					is_arg_flag_value = true
 				} else {
 					value = 'true'
 				}
@@ -134,7 +152,7 @@ fn (mut cli CliParams[T]) parse_args(args []string) ! {
 			return error('unknown input option: `${input_flag}`')
 		}
 	}
-	
+
 	cli.add_extra_arguments()
 }
 
@@ -154,6 +172,8 @@ fn (mut cli CliParams[T]) parse_struct() {
 			cli.handler = s_attr.arg
 		} else if s_attr.name == 'compact_flags' {
 			cli.is_compact_flags = true
+		} else if s_attr.name == 'eq_sign_values' {
+			cli.is_eq_sign_values = true
 		}
 	}
 	$for field in T.fields {
@@ -174,7 +194,7 @@ fn (mut cli CliParams[T]) parse_struct() {
 						option.short = attr[1].trim_indent()
 					}
 					'flag' {
-						$if field.typ !is bool { 
+						$if field.typ !is bool {
 							panic('`flag` fields must be `bool` type [${T.name}.${field.name}]')
 						}
 						option.is_flag = true
