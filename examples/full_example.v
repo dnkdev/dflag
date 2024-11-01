@@ -1,25 +1,3 @@
-`dflag` - command line option parser
-
-Library exploits V's language compile-time capabilities to simplify creation of CLI program.
-
-### Quick Start
-
-##### Install `dflag` module
-`
-v install https://github.com/dnkdev/dflag
-`
-##### Compile Example
-`
-v ~/.vmodules/dflag/examples/full_example.v -o ./example
-`
-##### Run compiled binary
-
-`./example -f 33.1 -n 11 -p "Hello World" -vdb dummy.txt -v`
-<br>
-`./example -f33.1 -n=11 --random -p="Hello World" --print=Goodbye -v -d -b dummy.txt -v`
-
-#### Example Code
-```v
 // This example shows all possible attributes
 module main
 
@@ -103,5 +81,3 @@ OPTIONS:
 	--boolean -b 	Is it "true" or "false"
 	--dump	  -d	Dump the struct')
 }
-
-```
