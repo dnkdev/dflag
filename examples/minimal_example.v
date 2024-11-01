@@ -1,13 +1,14 @@
 // simple program that will print "stairs" with `*` symbol 
 import dflag
 
-@[callback: 'handler']
 struct Test {
-	help	bool			@[flag; short: 'h']
-	stairs	int	 = 1		@[short: 's']
+	help	bool		@[flag; short: 'h']
+	stairs	int	 = 1	@[short: 's']
 }
 
-fn (t &Test) handler() {
+fn main(){
+	t := dflag.handle[Test]()!
+
 	if t.help || t.stairs <= 1{
 		println("Usage: ./program [OPTION][VALUE > 1]")
 		println("./program --stairs 10")
@@ -24,8 +25,4 @@ fn (t &Test) handler() {
 	}
 	
 	println(text)
-}
-
-fn main(){
-	dflag.handle[Test]()
 }
