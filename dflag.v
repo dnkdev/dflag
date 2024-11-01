@@ -36,7 +36,8 @@ enum Mode {
 
 //  `operands` are all positional arguments after all your program's options. 
 //  your options and operands can be separeted with `--` argument `./example -v -ovalue -ctext -- --patern -v example.txt`
-//  in example above the  `--pattern`, `-v` and `example.txt` are treated separately from  `-ctext` `-ovalue` and `-v` as positional extra arguments
+//  also on first not an option argument, the rest will be treated as operands
+//  in example above the  `--pattern`, `-v` and `example.txt` are treated separately from  `-ctext` `-ovalue` and `-v` as positional arguments - operands
 //  reffering to https://pubs.opengroup.org/onlinepubs/7908799/xbd/utilconv.html#usg
 struct CliParams[T] {
 mut:
@@ -47,6 +48,7 @@ mut:
 	params         	  []Param // @[str:skip] // array of parsed struct
 	parsed            []Argument // array of parsed args
 	operands          []string  
+	extra_opts		  []string 
 	handler           string
 	mode              Mode = .strict
 }
@@ -117,7 +119,6 @@ fn (mut cli CliParams[T]) parse_short_opt(mut arg Argument) !{
 			val := arg.text.all_after('=')
 			for mut param in cli.params {
 				if !param.is_flag && param.short == opt {
-					println('set ${opt} ${val}')
 					arg.value = val
 					arg.name = opt
 					return
@@ -127,8 +128,8 @@ fn (mut cli CliParams[T]) parse_short_opt(mut arg Argument) !{
 	}
 	if cli.settings.short_opt.is_concat_values {
 		for mut param in cli.params {
+			println(param)
 			if !param.is_flag && param.short.len != arg.name.len && arg.text.starts_with('${arg.dash_str}${param.short}') {
-				// println('${arg.dash_str}${param.short} == ${arg.text}')
 				arg.value = arg.text.all_after('${arg.dash_str}${param.short}')
 				arg.name = param.short
 				return
@@ -137,7 +138,6 @@ fn (mut cli CliParams[T]) parse_short_opt(mut arg Argument) !{
 	}
 	if cli.settings.short_opt.is_positional {
 		for mut param in cli.params {
-			println('${arg.text}')
 			if !param.is_flag && param.short == arg.text.all_after(arg.dash_str) {
 				if cli.can_peek(){
 					arg.value = cli.peek()
@@ -152,30 +152,24 @@ fn (mut cli CliParams[T]) parse_short_opt(mut arg Argument) !{
 	}
 	if cli.settings.short_opt.is_compact_flags{
 		opt_name := arg.text.all_after(arg.dash_str)
-		mut founds := 0//[]&Param{};
+		mut founds := 0
 		outer: for c in opt_name {
-			// println(c.ascii_str())
 			for mut param in cli.params {
 				if param.is_flag && param.short == c.ascii_str() {
 					founds++
-					// unsafe {
-					// 	founds << &param
-					// }
 					continue outer
 				}
 			}
-			// if cli.mode == .strict {
+			if cli.mode == .strict {
 				return error('unrecognized flag `${c.ascii_str()}` in option `${arg.text}`')
-			// }
+			}else {
+				cli.extra_opts << arg.text
+				return
+			}
 		}
-		// println('${founds.len} len and ${opt_name.len}')
 		if founds == opt_name.len {
 			arg.value = 'true'
 			arg.is_flag = true
-			// for mut param in founds {
-			// 	println('modifying ${param.long}')
-			// 	// arg.value = 'true'
-			// }
 			return
 		}
 	}
@@ -190,6 +184,9 @@ fn (mut cli CliParams[T]) parse_short_opt(mut arg Argument) !{
 
 	if cli.mode == .strict {
 		return error('unrecognized option `${arg.text}`')
+	}
+	else {
+		cli.extra_opts << arg.text
 	}
 }
 
@@ -231,6 +228,9 @@ fn (mut cli CliParams[T]) parse_long_opt(mut arg Argument) !{
 	if cli.mode == .strict {
 		return error('unrecognized option `${arg.text}`')
 	}
+	else {
+		cli.extra_opts << arg.text
+	}
 }
 
 @[direct_array_access]
@@ -258,6 +258,11 @@ fn (mut cli CliParams[T]) parse_args() ! {
 			}
 			break
 		}
+		else if !cli.args[i].starts_with('-') { 
+			cli.operands = cli.args[i..]
+			cli.cursor += cli.args[i..].len
+			break
+		}
 		mut arg := Argument {
 			text:cli.args[i]
 			dash_str: if cli.args[i].starts_with('--') {
@@ -280,9 +285,9 @@ fn (mut cli CliParams[T]) parse_args() ! {
 		
 		cli.cursor++
 	}
-	// println(cli)
 //
-	// println(cli.parsed)
+//
+//
 	outer: for mut arg in cli.parsed {
 		for param in cli.params {
 			if (arg.is_flag && param.is_flag) && (cli.settings.short_opt.is_compact_flags || arg.name == param.long || arg.name == param.short){
@@ -312,7 +317,6 @@ fn (mut cli CliParams[T]) parse_args() ! {
 				arg.name = param.long
 				$for field in T.fields {
 					if field.name == arg.name {
-						// println('processing ${field.name}')
 						$if field.typ is string {
 							cli.parent.$(field.name) = arg.value.str()
 						} 
@@ -340,18 +344,32 @@ fn (mut cli CliParams[T]) parse_args() ! {
 			}
 		}
 	}
-	// cli.add_extra_arguments()
+	cli.add_extra_options()
+	cli.add_operands()
 }
 
-// fn (mut cli CliParams[T]) add_extra_options() {
-// 	$for field in T.fields {
-// 		$if field.typ is []string {
-// 			if 'extra_opts' in field.attrs {
-// 				cli.parent.$(field.name) = cli.operands
-// 			}
-// 		}
-// 	}
-// }
+fn (mut cli CliParams[T]) add_extra_options() {
+	if cli.extra_opts.len > 0 {
+		$for field in T.fields {
+			$if field.typ is []string {
+				if 'extra_opts' in field.attrs {
+					cli.parent.$(field.name) = cli.extra_opts
+				}
+			}
+		}
+	}
+}
+fn (mut cli CliParams[T]) add_operands() {
+	if cli.operands.len > 0 {
+		$for field in T.fields {
+			$if field.typ is []string {
+				if 'operands' in field.attrs {
+					cli.parent.$(field.name) = cli.operands
+				}
+			}
+		}
+	}
+}
 
 fn parse_attr_arg_line(l string) []string {
 	mut values := l.split(',')
@@ -363,7 +381,6 @@ fn parse_attr_arg_line(l string) []string {
 
 fn (mut cli CliParams[T]) parse_struct() {
 	$for s_attr in T.attributes {
-		// println(s_attr)
 		match s_attr.name {
 			'dflag', 'mode' {
 				match s_attr.arg {
@@ -382,6 +399,9 @@ fn (mut cli CliParams[T]) parse_struct() {
 				values := parse_attr_arg_line(s_attr.arg)
 				for v in values {
 					match v {
+						'no_positional'{
+							cli.settings.short_opt.is_positional = false
+						}
 						'positional'{
 							cli.settings.short_opt.is_positional = true
 						}
@@ -424,6 +444,10 @@ fn (mut cli CliParams[T]) parse_struct() {
 		if field.attrs.len == 0 {
 			// do nothing if no attributes
 		} else if 'extra_opts' in field.attrs {
+			$if field.typ !is []string {
+				panic('`extra_opts` must be `[]string` type [${T.name}.${field.name}]')
+			}
+		} else if 'operands' in field.attrs{
 			$if field.typ !is []string {
 				panic('`extra_opts` must be `[]string` type [${T.name}.${field.name}]')
 			}
