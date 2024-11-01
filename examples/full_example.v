@@ -4,17 +4,17 @@ module main
 import dflag
 
 // `dflag` attribute sets the parsing mode. Modes:
-// 		`non-strict` - instead of error, collects all input arguments that didn't match to `extra_opt` 
-//      `strict` - default mode. returns an error if unrecognized option is given.
+//     `non-strict` - instead of error, collects all input arguments that didn't match to `extra_opt` 
+//     `strict` - default mode. returns an error if unrecognized option is given.
 // `callback` - struct method for processing the result
 // `short_opt` and `long_opt` is settings for short and long options
 // short is single-dash options `-`, long option starts with double-dash `--`
-//		`positional` default positional parsing, with space as delimiter. [./cl --option option_argument] can be omitted
-//		`no_positional` turns off positional argument parsing
-//		`eq_sign` allow parse option_argument after `=` sign for option [./cl --option=option_argument]
-//		`concat` allows to parse option_argument right after option [./cl -fexample.txt]
-//		`single_char` one character length of short option is allowed ["./cl -t" but not like this: "./cl -text"]
-//      `compact` allows to write multiple flags within one-dash(-) ["./cl -vds .." which also is "./cl -v -d -s .."]
+//     `positional` default positional parsing, with space as delimiter. [./cl --option option_argument] can be omitted
+//     `no_positional` turns off positional argument parsing
+//     `eq_sign` allow parse option_argument after `=` sign for option [./cl --option=option_argument]
+//     `concat` allows to parse option_argument right after option [./cl -fexample.txt]
+//     `single_char` one character length of short option is allowed ["./cl -t" but not like this: "./cl -text"]
+//     `compact` allows to write multiple flags within one-dash(-) ["./cl -vds .." which also is "./cl -v -d -s .."]
 @[dflag: 'non-strict'] // can be omitted
 @[callback: 'handler_func']
 @[short_opt: 'positional, eq_sign, concat, compact, single-char']
