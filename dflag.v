@@ -113,10 +113,11 @@ mut:
 fn (mut cli CliParams[T]) parse_short_opt(mut arg Argument) !{
 	if cli.settings.short_opt.is_eq_sign_values {
 		if arg.text.contains('=') {
-			opt := arg.text.all_before('=')
+			opt := arg.text.all_before('=').all_after(arg.dash_str)
 			val := arg.text.all_after('=')
 			for mut param in cli.params {
-				if !param.is_flag && param.short == opt.all_after(arg.dash_str) {
+				if !param.is_flag && param.short == opt {
+					println('set ${opt} ${val}')
 					arg.value = val
 					arg.name = opt
 					return
@@ -124,10 +125,9 @@ fn (mut cli CliParams[T]) parse_short_opt(mut arg Argument) !{
 			}
 		}
 	}
-
 	if cli.settings.short_opt.is_concat_values {
 		for mut param in cli.params {
-			if !param.is_flag && arg.text.starts_with('${arg.dash_str}${param.short}') {
+			if !param.is_flag && param.short.len != arg.name.len && arg.text.starts_with('${arg.dash_str}${param.short}') {
 				// println('${arg.dash_str}${param.short} == ${arg.text}')
 				arg.value = arg.text.all_after('${arg.dash_str}${param.short}')
 				arg.name = param.short
@@ -135,8 +135,22 @@ fn (mut cli CliParams[T]) parse_short_opt(mut arg Argument) !{
 			}
 		}
 	}
-	
-	if cli.settings.short_opt.is_compact_flags {
+	if cli.settings.short_opt.is_positional {
+		for mut param in cli.params {
+			println('${arg.text}')
+			if !param.is_flag && param.short == arg.text.all_after(arg.dash_str) {
+				if cli.can_peek(){
+					arg.value = cli.peek()
+					cli.cursor++
+				}
+				else {
+					return error('need a value for `${arg.dash_str}${param.short}`')
+				}
+				return
+			}
+		}
+	}
+	if cli.settings.short_opt.is_compact_flags{
 		opt_name := arg.text.all_after(arg.dash_str)
 		mut founds := 0//[]&Param{};
 		outer: for c in opt_name {
@@ -166,20 +180,6 @@ fn (mut cli CliParams[T]) parse_short_opt(mut arg Argument) !{
 		}
 	}
 
-	if cli.settings.short_opt.is_positional {
-		for mut param in cli.params {
-			if !param.is_flag && param.short == arg.text.all_after(arg.dash_str) {
-				if cli.can_peek(){
-					arg.value = cli.peek()
-					cli.cursor++
-				}
-				else {
-					return error('need a value for `${arg.dash_str}${param.short}`')
-				}
-				return
-			}
-		}
-	}
 	for mut param in cli.params {
 		if param.is_flag && param.short == arg.text.all_after(arg.dash_str) {
 			arg.value = 'true'
@@ -196,10 +196,10 @@ fn (mut cli CliParams[T]) parse_short_opt(mut arg Argument) !{
 fn (mut cli CliParams[T]) parse_long_opt(mut arg Argument) !{
 	if cli.settings.long_opt.is_eq_sign_values {
 		if arg.text.contains('=') {
-			opt := arg.text.all_before('=')
+			opt := arg.text.all_before('=').all_after(arg.dash_str)
 			val := arg.text.all_after('=')
 			for mut param in cli.params {
-				if !param.is_flag && param.long == opt.all_after(arg.dash_str) {
+				if !param.is_flag && param.long == opt {
 					arg.name = opt
 					arg.value = val
 					return
@@ -280,13 +280,13 @@ fn (mut cli CliParams[T]) parse_args() ! {
 		
 		cli.cursor++
 	}
-	println(cli)
+	// println(cli)
 //
-	println(cli.parsed)
+	// println(cli.parsed)
 	outer: for mut arg in cli.parsed {
 		for param in cli.params {
 			if (arg.is_flag && param.is_flag) && (cli.settings.short_opt.is_compact_flags || arg.name == param.long || arg.name == param.short){
-				println('${arg.dash_str}${arg.name} is flag ${param.long} ${arg.name == param.short}')
+				// println('${arg.dash_str}${arg.name} is flag ${param.long} ${arg.name == param.short}')
 
 				mut flag_args := []u8{}
 				if arg.name.len > 1  && cli.settings.short_opt.is_compact_flags && arg.dash_str.len == 1{
@@ -300,7 +300,7 @@ fn (mut cli CliParams[T]) parse_args() ! {
 					$for field in T.fields {
 						$if field.typ is bool {
 							if field.name == param.long && param.short == flag.ascii_str(){
-								println('setting ${field.name} | ${param.long} ${param.short} ${flag.ascii_str()} ${flag_args.map(it.ascii_str())}')
+								// println('setting ${field.name} | ${param.long} ${param.short} ${flag.ascii_str()} ${flag_args.map(it.ascii_str())}')
 								cli.parent.$(field.name) = true
 								continue flag_for
 							}
@@ -312,7 +312,7 @@ fn (mut cli CliParams[T]) parse_args() ! {
 				arg.name = param.long
 				$for field in T.fields {
 					if field.name == arg.name {
-						println('processing ${field.name}')
+						// println('processing ${field.name}')
 						$if field.typ is string {
 							cli.parent.$(field.name) = arg.value.str()
 						} 
@@ -339,177 +339,7 @@ fn (mut cli CliParams[T]) parse_args() ! {
 				}
 			}
 		}
-		// println(' == `${arg.name}`')
-		// $for field in T.fields{
-		// 	if 'nocmd' !in field.attrs && (arg.is_flag || field.name == arg.name) {
-		// 	println('`${field.name}`')
-		// 		$if field.typ is string {
-		// 			cli.parent.$(field.name) = arg.value.str()
-		// 		} $else $if field.typ is bool {
-		// 			/////////////////////////////////////////////////// TODO!
-		// 			println('${field.name} is bool ')
-		// 			if arg.is_flag && (arg.value == 'true') {
-		// 				cli.parent.$(field.name) = true
-		// 				println('FLAG ${arg}')
-		// 			} else {
-		// 				println('NOFLAG ${arg}')
-		// 				cli.parent.$(field.name) = false
-		// 			}
-		// 		} $else $if field.typ is int {
-		// 			cli.parent.$(field.name) = arg.value.int()
-		// 		} $else $if field.typ is []string {
-		// 			cli.parent.$(field.name) << arg.value.str()
-		// 		} $else $if field.typ is i64 {
-		// 			cli.parent.$(field.name) = arg.value.i64()
-		// 		} $else $if field.typ is u64 {
-		// 			cli.parent.$(field.name) = arg.value.u64()
-		// 		} $else $if field.typ is u32 {
-		// 			cli.parent.$(field.name) = arg.value.u32()
-		// 		} $else $if field.typ is f32 {
-		// 			cli.parent.$(field.name) = arg.value.f32()
-		// 		} $else $if field.typ is f64 {
-		// 			cli.parent.$(field.name) = arg.value.f64()
-		// 		} $else {
-		// 			return error('`${field.name}` type is not acceptable. Set `@[nocmd]` attribute to skip.')
-		// 		}
-		// 	}
-		// }
 	}
-	// for param in cli.params {
-	// 	if param.value.len > 0 {
-	// 		$for field in T.fields {
-	// 			if field.name == param.name {
-	// 				$if field.typ is string {
-	// 					cli.parent.$(field.name) = param.value.str()
-	// 				} $else $if field.typ is bool {
-	// 					if param.value == 'true' {
-	// 						cli.parent.$(field.name) = true
-	// 					} else {
-	// 						cli.parent.$(field.name) = false
-	// 					}
-	// 				} $else $if field.typ is int {
-	// 					cli.parent.$(field.name) = param.value.int()
-	// 				} $else $if field.typ is []string {
-	// 					cli.parent.$(field.name) << param.value.str()
-	// 				} $else $if field.typ is i64 {
-	// 					cli.parent.$(field.name) = param.value.i64()
-	// 				} $else $if field.typ is u64 {
-	// 					cli.parent.$(field.name) = param.value.u64()
-	// 				} $else $if field.typ is u32 {
-	// 					cli.parent.$(field.name) = param.value.u32()
-	// 				} $else $if field.typ is f32 {
-	// 					cli.parent.$(field.name) = param.value.f32()
-	// 				} $else $if field.typ is f64 {
-	// 					cli.parent.$(field.name) = param.value.f64()
-	// 				} $else {
-	// 					return error('`${field.name}` type is not acceptable. Set `@[nocmd]` attribute to skip.')
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// }
-
-	// mut is_arg_flag_value := false
-	// if cli.is_compact_flags {
-	// 	for i in 0 .. os_args.len {
-	// 		input_flag := os_args[i]
-	// 		if !input_flag.starts_with('--') && input_flag.starts_with('-') && input_flag.len > 2 {
-	// 			os_args.delete(i)
-	// 			os_args << input_flag.all_after('-').split('').map('-' + it)
-	// 		}
-	// 	}
-	// 	$if dflag_debug ? {
-	// 		dump(os_args)
-	// 	}
-	// }
-	// for i in 0 .. os_args.len {
-	// 	input_flag := os_args[i]
-	// 	input_flag_delim := if input_flag.starts_with('--') {
-	// 		'--'
-	// 	} else if input_flag.starts_with('-') {
-	// 		'-'
-	// 	} else {
-	// 		if !is_arg_flag_value {
-	// 			cli.extra_args << input_flag
-	// 		}
-	// 		is_arg_flag_value = false
-	// 		continue
-	// 	}
-	// 	mut input_flag_name := input_flag.all_after(input_flag_delim)
-	// 	mut eq_sign_value := ''
-	// 	if cli.is_eq_sign_values {
-	// 		if input_flag_name.contains('=') {
-	// 			eq_sign_value = input_flag_name.all_after('=')
-	// 			input_flag_name = input_flag_name.all_before('=')
-	// 			if eq_sign_value.len <= 0 {
-	// 				return error('option `${input_flag_delim}${input_flag_name}` requires a value')
-	// 			}
-	
-	// 		}
-	// 	}
-
-	// 	mut is_valid_flag := false
-	// 	for mut option in cli.options {
-	// 		flag_name := if input_flag_delim == '--' { option.name } else { option.short }
-	// 		if flag_name == input_flag_name {
-	// 			is_valid_flag = true
-	// 			mut value := ''
-	// 			if !option.is_flag{
-	// 				if eq_sign_value != '' {
-	// 					value = eq_sign_value
-	// 				}	
-	// 				else {
-
-	// 					if i + 1 >= os_args.len {
-	// 						return error('option `${input_flag_delim}${flag_name}` requires a value')
-	// 					}
-	// 					val := os_args[i + 1]
-	// 					if val.starts_with('-') {
-	// 						return error('wrong `${option.name}` option value `${input_flag_delim}${flag_name} ${val}`')
-	// 					}
-	// 					value = val
-	// 					is_arg_flag_value = true
-	// 				}
-	// 			} else {
-	// 				value = 'true'
-	// 			}
-	// 			option.value = value.str()
-	// 			$for field in T.fields {
-	// 				if field.name == option.name {
-	// 					$if field.typ is string {
-	// 						cli.parent.$(field.name) = value.str()
-	// 					} $else $if field.typ is bool {
-	// 						if option.value == 'true' {
-	// 							cli.parent.$(field.name) = true
-	// 						} else {
-	// 							cli.parent.$(field.name) = false
-	// 						}
-	// 					} $else $if field.typ is int {
-	// 						cli.parent.$(field.name) = value.int()
-	// 					} $else $if field.typ is []string {
-	// 						cli.parent.$(field.name) << value.str()
-	// 					} $else $if field.typ is i64 {
-	// 						cli.parent.$(field.name) = value.i64()
-	// 					} $else $if field.typ is u64 {
-	// 						cli.parent.$(field.name) = value.u64()
-	// 					} $else $if field.typ is u32 {
-	// 						cli.parent.$(field.name) = value.u32()
-	// 					} $else $if field.typ is f32 {
-	// 						cli.parent.$(field.name) = value.f32()
-	// 					} $else $if field.typ is f64 {
-	// 						cli.parent.$(field.name) = value.f64()
-	// 					} $else {
-	// 						eprintln('error: `${field.name}` type is not acceptable. Set `@[nocmd]` attribute to skip.')
-	// 					}
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// 	if !is_valid_flag {
-	// 		return error('unknown input option: `${input_flag}`')
-	// 	}
-	// }
-
 	// cli.add_extra_arguments()
 }
 

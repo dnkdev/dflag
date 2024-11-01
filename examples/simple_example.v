@@ -14,7 +14,7 @@ import dflag
 //		`concat` allows to parse option_argument right after option [./cl -fexample.txt]
 //		`single_char` one character length of short option is allowed ["./cl -t" but not like this: "./cl -text"]
 //      `compact` allows to write multiple flags within one-dash(-) ["./cl -vds .." which also is "./cl -v -d -s .."]
-@[dflag: 'non-strict'] // 
+@[dflag: 'strict'] // can be omitted
 @[callback: 'handler_func']
 @[short_opt: 'positional, eq_sign, concat, compact, single_char']
 @[long_opt: 'positional, eq_sign']
@@ -23,7 +23,7 @@ mut:
 	run struct {
 		help bool @[flag;short:'h']
 	}	 @[nocmd; hello]
-	help        bool     @[flag; short: 'h'] //
+	help        bool     @[flag; short: 'h'] // all boolean options-flags should be marked with `flag` attribute
 	print       []string @[short: 'p'] // array allows using option multiple times
 	number      int      @[short: 'n'] 
 	float       f32      @[short: 'f']
