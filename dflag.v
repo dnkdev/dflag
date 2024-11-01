@@ -275,20 +275,22 @@ fn (mut cli CliParams[T]) parse_args() ! {
 		arg.name = arg.text.all_after(arg.dash_str)
 		if arg.dash_str.len == 1 {
 			cli.parse_short_opt(mut arg)!
-			
 		}
 		else if arg.dash_str.len == 2 {
 			cli.parse_long_opt(mut arg)!
 		}
-		else {}
+		else {
+			panic('invalid `arg.dash_str` length (${arg.dash_str.len})')
+		}
 
 		cli.parsed << arg
 		
 		cli.cursor++
 	}
-	
+
 	cli.finalize()!
-	cli.add_extra()
+	cli.add_extra_options()
+	cli.add_operands()
 }
 
 // finalize function fills the original struct with parsed values
@@ -360,13 +362,21 @@ fn (mut cli CliParams[T]) finalize() !{
 	}
 }
 
-fn (mut cli CliParams[T]) add_extra() {
+fn (mut cli CliParams[T]) add_extra_options() {
 	if cli.extra_opts.len > 0 {
 		$for field in T.fields {
 			$if field.typ is []string {
 				if 'extra_opts' in field.attrs {
 					cli.parent.$(field.name) = cli.extra_opts
 				}
+			}
+		}
+	}
+}
+fn (mut cli CliParams[T]) add_operands() {
+	if cli.operands.len > 0 {
+		$for field in T.fields {
+			$if field.typ is []string {
 				if 'operands' in field.attrs {
 					cli.parent.$(field.name) = cli.operands
 				}
