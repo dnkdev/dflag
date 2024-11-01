@@ -27,7 +27,7 @@ mut:
 	}
 }
 
-// 	`non-strict` - allow to collect all input arguments that didn't match to `extra_opt` 
+//  `non-strict` - all input options that didn't match are collected to `extra_opts` 
 //  `strict` - default mode. returns an error if unrecognized option is given. 
 enum Mode {
 	strict
@@ -54,7 +54,7 @@ mut:
 }
 
 // handle - the main function to call and pass your struct as generic type
-pub fn handle[T]() &T {
+pub fn handle[T]() !&T {
 	mut cli := CliParams[T]{
 		parent: &T{}
 	}
@@ -69,8 +69,9 @@ pub fn handle[T]() &T {
 		println('[dflag_debug][${@FILE_LINE}] parsing args ${os_args}')
 	}
 	cli.parse_args() or {
-		eprintln('\033[31merror\033[0m: ${err}')
-		exit(1)
+		// eprintln('\033[31merror\033[0m: ${err}')
+		// exit(1)
+		return err
 	}
 	$if dflag_debug ? {
 		println('[dflag_debug][${@FILE_LINE}] result struct: ${cli}')
@@ -98,6 +99,7 @@ fn (mut cli CliParams[T]) can_peek() bool {
 	}
 }
 
+@[inline]
 fn (mut cli CliParams[T]) peek() string{
 	return cli.args[cli.cursor + 1]
 }
@@ -128,7 +130,6 @@ fn (mut cli CliParams[T]) parse_short_opt(mut arg Argument) !{
 	}
 	if cli.settings.short_opt.is_concat_values {
 		for mut param in cli.params {
-			println(param)
 			if !param.is_flag && param.short.len != arg.name.len && arg.text.starts_with('${arg.dash_str}${param.short}') {
 				arg.value = arg.text.all_after('${arg.dash_str}${param.short}')
 				arg.name = param.short
@@ -260,7 +261,7 @@ fn (mut cli CliParams[T]) parse_args() ! {
 		}
 		else if !cli.args[i].starts_with('-') { 
 			cli.operands = cli.args[i..]
-			cli.cursor += cli.args[i..].len
+			cli.cursor += cli.operands.len
 			break
 		}
 		mut arg := Argument {
@@ -285,27 +286,32 @@ fn (mut cli CliParams[T]) parse_args() ! {
 		
 		cli.cursor++
 	}
-//
-//
-//
+	
+	cli.finalize()!
+	cli.add_extra()
+}
+
+// finalize function fills the original struct with parsed values
+@[direct_array_access]
+fn (mut cli CliParams[T]) finalize() !{
 	outer: for mut arg in cli.parsed {
 		for param in cli.params {
 			if (arg.is_flag && param.is_flag) && (cli.settings.short_opt.is_compact_flags || arg.name == param.long || arg.name == param.short){
-				// println('${arg.dash_str}${arg.name} is flag ${param.long} ${arg.name == param.short}')
 
 				mut flag_args := []u8{}
 				if arg.name.len > 1  && cli.settings.short_opt.is_compact_flags && arg.dash_str.len == 1{
 					for f in arg.name {
 						flag_args << f
 					}
-				}else {
+				} else if arg.name.len > 0{
 					flag_args << arg.name.bytes()[0]
+				} else {
+					panic('[${@FILE_LINE}] `arg.name` should always be > 0')
 				}
 				flag_for: for flag in flag_args {
 					$for field in T.fields {
 						$if field.typ is bool {
 							if field.name == param.long && param.short == flag.ascii_str(){
-								// println('setting ${field.name} | ${param.long} ${param.short} ${flag.ascii_str()} ${flag_args.map(it.ascii_str())}')
 								cli.parent.$(field.name) = true
 								continue flag_for
 							}
@@ -326,13 +332,21 @@ fn (mut cli CliParams[T]) parse_args() ! {
 							cli.parent.$(field.name) = arg.value.int()
 						} $else $if field.typ is []string {
 							cli.parent.$(field.name) << arg.value.str()
+						} $else $if field.typ is i8 {
+							cli.parent.$(field.name) = arg.value.i8()
+						} $else $if field.typ is i16 {
+							cli.parent.$(field.name) = arg.value.i16()
 						} $else $if field.typ is i64 {
 							cli.parent.$(field.name) = arg.value.i64()
-						} $else $if field.typ is u64 {
-							cli.parent.$(field.name) = arg.value.u64()
+						} $else $if field.typ is u8 {
+							cli.parent.$(field.name) = arg.value.u8()
+						} $else $if field.typ is u16 {
+							cli.parent.$(field.name) = arg.value.u16()
 						} $else $if field.typ is u32 {
 							cli.parent.$(field.name) = arg.value.u32()
-						} $else $if field.typ is f32 {
+						} $else $if field.typ is u64 {
+							cli.parent.$(field.name) = arg.value.u64()
+						}  $else $if field.typ is f32 {
 							cli.parent.$(field.name) = arg.value.f32()
 						} $else $if field.typ is f64 {
 							cli.parent.$(field.name) = arg.value.f64()
@@ -344,25 +358,15 @@ fn (mut cli CliParams[T]) parse_args() ! {
 			}
 		}
 	}
-	cli.add_extra_options()
-	cli.add_operands()
 }
 
-fn (mut cli CliParams[T]) add_extra_options() {
+fn (mut cli CliParams[T]) add_extra() {
 	if cli.extra_opts.len > 0 {
 		$for field in T.fields {
 			$if field.typ is []string {
 				if 'extra_opts' in field.attrs {
 					cli.parent.$(field.name) = cli.extra_opts
 				}
-			}
-		}
-	}
-}
-fn (mut cli CliParams[T]) add_operands() {
-	if cli.operands.len > 0 {
-		$for field in T.fields {
-			$if field.typ is []string {
 				if 'operands' in field.attrs {
 					cli.parent.$(field.name) = cli.operands
 				}
@@ -399,7 +403,7 @@ fn (mut cli CliParams[T]) parse_struct() {
 				values := parse_attr_arg_line(s_attr.arg)
 				for v in values {
 					match v {
-						'no_positional'{
+						'non_positional'{
 							cli.settings.short_opt.is_positional = false
 						}
 						'positional'{
@@ -425,6 +429,9 @@ fn (mut cli CliParams[T]) parse_struct() {
 				values := parse_attr_arg_line(s_attr.arg)
 				for v in values {
 					match v {
+						'non_positional'{
+							cli.settings.long_opt.is_positional = false
+						}
 						'positional'{
 							cli.settings.long_opt.is_positional = true
 						}
