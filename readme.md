@@ -25,14 +25,16 @@ import dflag
 
 // `callback` - struct method to call it for processing the result
 // `compact_flags` - allows to write multiple flags within one-dash(-):
-// 	`.. -vds ..` which also is `.. -v -d -s ..`
+// 		`.. -vds ..` which also is `.. -v -d -s ..`
+// `eq_sign_values` - additionally allows to write value for long (two dash) option right away after `=` sign:
+//  	`./example --print="Hello World" --number=10`
 @[callback: 'handler_func']
 @[compact_flags]
 @[eq_sign_values]
 struct DTest {
 mut:
 	help        bool     @[flag; short: 'h'] //
-	print       []string @[short: 'p'] // array allows using flag multiple times
+	print       []string @[short: 'p'] // array allows using option multiple times
 	number      int      @[short: 'n'] // not a flag, so requires a value 
 	float       f32      @[short: 'f']
 	boolean     bool     @[short: 'b']
