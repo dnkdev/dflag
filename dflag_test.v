@@ -1,8 +1,8 @@
 module dflag
 
 @[dflag: 'non-strict'] 
-@[callback: 'handler_func']
-@[short_opt: 'positional, eq_sign, concat, compact, single-char']
+@[handler: 'handler_func']
+@[short_opt: 'positional, eq_sign, concat, compact']
 @[long_opt: 'positional, eq_sign']
 struct DTest {
 mut:
