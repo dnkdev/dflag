@@ -1,24 +1,26 @@
 `dflag` - command line option parser
 
-Library exploits V's language compile-time capabilities to simplify creation of CLI program.
+Library exploits V's language compile-time capabilities to simplify creation of
+CLI program.
 
 ### Quick Start
 
 ##### Install `dflag` module
-`
-v install https://github.com/dnkdev/dflag
-`
+
+`v install https://github.com/dnkdev/dflag`
+
 ##### Compile Example
-`
-v ~/.vmodules/dflag/examples/full_example.v -o ./example
-`
+
+`v ~/.vmodules/dflag/examples/full_example.v -o ./example`
+
 ##### Run compiled binary
 
 `./example -f 33.1 -n 11 -p "Hello World" -vdb dummy.txt -v`
 <br>
 `./example -f33.1 -n=11 --random -p="Hello World" --print=Goodbye -v -d -b dummy.txt -v`
 
-#### Example Code
+### Example Code
+
 ```v
 // This example shows all possible attributes
 module main
@@ -28,18 +30,17 @@ import dflag
 // `dflag` attribute sets the parsing mode. Modes:
 //     `non-strict` - instead of error, collects all input options that didn't match to `extra_opts` 
 //     `strict` - default mode. returns an error if unrecognized option is given.
-// `callback` - struct method for processing the result
+// `handler` - struct method for processing the result
 // `short_opt` and `long_opt` is settings for short and long options
 // short is single-dash options `-`, long option starts with double-dash `--`
 //     `positional` default positional parsing, with space as delimiter. [./cl --option option_argument]
 //     `non_positional` turns off positional argument parsing
 //     `eq_sign` allow parse option_argument after `=` sign for option [./cl --option=option_argument]
 //     `concat` allows to parse option_argument right after option [./cl -fexample.txt]
-//     `single_char` one character length of short option is allowed ["./cl -t" but not like this: "./cl -text"]
 //     `compact` allows to write multiple flags within one-dash(-) ["./cl -vds .." which also is "./cl -v -d -s .."]
 @[dflag: 'non-strict'] 
-@[callback: 'handler_func']
-@[short_opt: 'positional, eq_sign, concat, compact, single-char']
+@[handler: 'handler_func']
+@[short_opt: 'positional, eq_sign, concat, compact']
 @[long_opt: 'positional, eq_sign']
 struct DTest {
 mut:
@@ -106,5 +107,9 @@ FLAGS:
 	--boolean -b 	Is it "true" or "false"
 	--dump	  -d	Dump the struct')
 }
-
 ```
+
+IDEAS:
+
+- Only single-dash options, only double-dash
+- `long:` attribute for setting a long name, instead of using just fieldname
